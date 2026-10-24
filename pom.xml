@@ -14,6 +14,9 @@
   <licenses>
     <license>
       <name>MIT License</name>
+      <url>https://opensource.org/license/mit</url>
+      <distribution>repo</distribution>
+      <comments>Same license as the SSW library this is ported from; see LICENSE</comments>
     </license>
   </licenses>
 

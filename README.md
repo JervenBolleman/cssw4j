@@ -3,6 +3,8 @@
 A pure Java port of the [Complete Striped Smith-Waterman (SSW) library](https://github.com/mengyao/Complete-Striped-Smith-Waterman-Library)
 using the Java Vector API (`jdk.incubator.vector`). No JNI, no native code.
 
+How the code works, step by step from plain Smith-Waterman: [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md).
+
 It reproduces `ssw_init` / `ssw_align` / `mark_mismatch`: optimal score, sub-optimal score, begin and end positions,
 CIGAR (BAM packed) and the `=`/`X`/soft-clip CIGAR with edit distance.
 
@@ -99,3 +101,19 @@ java --add-modules jdk.incubator.vector -cp target/classes:target/test-classes s
   loop-carried `ByteVector.lanewise(UMAX, ...)`. The excess-128 kernel avoids all unsigned operators.
 * `VectorOperators.SUADD` is declared `Binary` in JDK 25 and `Associative` in JDK 27, so code compiled against one and
   run on the other fails with `NoSuchFieldError`. cssw4j does not use it.
+
+## Credits and license
+
+cssw4j is a port of the SSW library by **Mengyao Zhao** and the other SSW developers (Wan-Ping Lee, Yongan Zhao,
+Daniel Cameron, Nan Xiao and contributors), who open-sourced it under the MIT license:
+https://github.com/mengyao/Complete-Striped-Smith-Waterman-Library. Please cite their paper when you use this code:
+
+> Zhao M, Lee W-P, Garrison EP, Marth GT (2013). SSW Library: An SIMD Smith-Waterman C/C++ Library for Use in Genomic
+> Applications. PLoS ONE 8(12): e82138. https://doi.org/10.1371/journal.pone.0082138
+
+The striped algorithm and lazy-F loop are by Michael Farrar (swsse2, BSD license); the SSW variant of the lazy-F loop
+comes from SWPS3 (ETH Zürich, MIT license). See [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md#credits) for full
+references.
+
+cssw4j is released under the MIT license, the same license as the SSW library. See [LICENSE](LICENSE), which also
+reproduces the BSD notice of Michael Farrar carried by the SSW source.
