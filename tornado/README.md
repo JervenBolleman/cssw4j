@@ -88,6 +88,29 @@ last toolkit that targets it. Its NVRTC works with the 580 driver, but its `nvcc
     export LD_LIBRARY_PATH=/usr/local/cuda-12.8/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
     TORNADOVM_HOME=$HOME/.sdkman/candidates/tornadovm/7.3.1-jdk22plus-cuda tornado/run-check.sh tornado
 
+## JMH benchmark (CUDA, Quadro M1000M)
+
+`bench.sh` runs a JMH benchmark (`src/bench`) of the same task graph: transfers, kernel and the copy of the results to
+the host, on the 3,025 protein pairs. JMH runs non-forked, in the launching JVM, because the TornadoVM launcher supplies
+module and export flags that a forked JVM would not get; JMH prints a warning for that, and the numbers are still valid
+for this comparison.
+
+    export TORNADO_JDK=/usr/lib/jvm/java-25-temurin-jdk
+    export TORNADOVM_HOME=$HOME/.sdkman/candidates/tornadovm/7.3.1-jdk22plus-cuda
+    export CUDA_HOME=/usr/local/cuda-12.8
+    export LD_LIBRARY_PATH=/usr/local/cuda-12.8/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
+    DEVICE=0:0 tornado/bench.sh          # DEVICE is driver:index, from tornado --devices
+
+The throughput is reported in ops/ms, where one invocation counts as 292,393,080 cells. Dividing by 10^6 gives GCUPS.
+
+| `layout` | throughput (ops/ms) | GCUPS |
+|---|---:|---:|
+| INTERLEAVED | 64,095 ± 421 | 0.064 |
+| CONTIGUOUS | 51,560 ± 22 | 0.052 |
+
+Five measurement iterations of 10 s after two warm-up iterations of 5 s each. The results agree with the separate
+`run-check.sh` timings above (4.55 s and 5.58 s per run).
+
 ## Limits
 
 * Scores equal the exact Smith-Waterman scores for gap open greater than gap extend, as in the C library.
