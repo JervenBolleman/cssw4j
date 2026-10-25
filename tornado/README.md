@@ -117,6 +117,48 @@ Five measurement iterations of 10 s after two warm-up iterations of 5 s each. Th
 The OpenCL runs use `TORNADOVM_HOME` of the `7.3.1-jdk22plus-opencl` SDK and `DEVICE=0:0` (Quadro) or `DEVICE=0:1`
 (pocl CPU); the CUDA environment variables are not needed for them.
 
+## Why the GPU is slower: investigation
+
+Each step has its own JMH benchmark in `src/bench` (run with `BENCH_FILTER=<class> tornado/bench.sh`) and its own
+commit. All GPU numbers: CUDA backend, Quadro M1000M. Every benchmark checks its results against the plain Java row
+kernel in setup.
+
+| # | Benchmark | Question | Result |
+|---|---|---|---|
+| 1 | `TransferBench` | Transfers or launch overhead? | No: 0.07 ms of a 4,566 ms call. |
+| 2 | `ImbalanceBench` | Does one pair set the time? | Yes: the largest pair alone takes 4,202 ms of 4,564. |
+| 3 | `BalancedScalingBench` | Speed with balanced work? | 1.12 GCUPS from about 4,096 equal pairs, 18x the dataset. |
+| 4 | `CpuBalancedBench` (main project) | Striped CPU on the same work? | 5.3 GCUPS on 1 thread; about 23.5 on 8 while cool. |
+| 5 | `StripBench` | Is the kernel bound by H/E memory traffic? | Mostly not: 4x less traffic gives +10% (1.23 GCUPS). |
+| 6 | `MatrixGatherBench` | Cost of the matrix lookups? | 56% of the time: 2.82 GCUPS without them. |
+| 7 | `LocalMatrixBench` | Matrix in local memory? | 2.85 GCUPS (2.3x); dataset 0.119 GCUPS. |
+
+**Is it the data dependencies?** Partly, in this sense: inside a pair every cell depends on its left, upper and diagonal
+neighbours, so one work-item computes its pair serially, one cell after another. A single GPU thread is slow (about
+1.2 us per cell for the row kernel, against a few ns per cell on a CPU core). The GPU is only fast when many pairs run at
+the same time and none is much larger than the others. The test dataset breaks that: one pair has 35 times the mean
+cells and takes 92% of the run (experiment 2).
+
+**Does a different benchmark setup give better results?** Yes. With balanced pairs (many pairs of equal length) the
+same kernel is 18 times faster than on the test dataset (experiment 3). The test dataset measures the latency of one
+GPU thread, not the throughput of the GPU.
+
+**What limits the balanced case?** Not the row memory traffic (experiment 5), but the substitution-matrix lookups:
+neighbouring work-items read different, scattered matrix entries from global memory (experiment 6). Keeping the matrix
+in local memory removes that cost (experiment 7, 2.85 GCUPS).
+
+**And against the CPU?** Even the best GPU version (2.85 GCUPS) is slower than one CPU thread running the striped
+Vector API aligner on the same pairs (5.3 GCUPS, experiment 4). The striped kernel scores up to 32 cells per instruction
+with 8-bit lanes, the GPU kernel one cell per thread with 32-bit values, and the Quadro M1000M is a small 2015 laptop
+GPU (5 multiprocessors). A larger GPU, 8- or 16-bit packed scores, and splitting long pairs over many threads
+(anti-diagonal parallelism, as CUDASW++ does for long sequences) are the next steps; none of them is measured here.
+
+**Measurement notes.** The 8-thread CPU number is not stable on this laptop: under full load the package reaches 85 C
+within about 5 s and the clock is cut to 0.25-1.8 GHz from outside the CPU (its own throttle counter does not change).
+Two TornadoVM 7.3.1 code-generation problems were found and worked around in the strip kernel (see its Javadoc and the
+experiment 5 commit): a conditional load compiled into an unconditional one, and `row + letter` generated with the byte
+type of the letter.
+
 ## Limits
 
 * Scores equal the exact Smith-Waterman scores for gap open greater than gap extend, as in the C library.
