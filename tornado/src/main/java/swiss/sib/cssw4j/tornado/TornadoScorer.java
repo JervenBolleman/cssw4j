@@ -32,7 +32,17 @@ public final class TornadoScorer implements AutoCloseable {
 						targets.residues, targets.offsets, h, e, scores, refEnds, readEnds) //
 				.transferToHost(DataTransferMode.EVERY_EXECUTION, scores, refEnds, readEnds);
 		ImmutableTaskGraph immutable = graph.snapshot();
-		plan = new TornadoExecutionPlan(immutable);
+		plan = new TornadoExecutionPlan(immutable).withDevice(device());
+	}
+
+	/**
+	 * The device named by the system property {@code cssw4j.device} as {@code driver:index} (for example {@code 0:1}),
+	 * from {@code tornado --devices}. Without the property the TornadoVM default device is used.
+	 */
+	public static uk.ac.manchester.tornado.api.common.TornadoDevice device() {
+		String spec = System.getProperty("cssw4j.device", "0:0");
+		String[] parts = spec.split(":");
+		return TornadoExecutionPlan.getDevice(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
 	}
 
 	public void run() {

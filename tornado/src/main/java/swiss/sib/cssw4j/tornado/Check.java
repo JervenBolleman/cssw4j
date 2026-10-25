@@ -41,6 +41,7 @@ public final class Check {
 
 		int[] scores, refEnds, readEnds;
 		if (tornado) {
+			System.out.println("device: " + TornadoScorer.device().getDescription());
 			try (TornadoScorer scorer = new TornadoScorer(matrix, queries, targets, gapOpen, gapExtend, layout)) {
 				long t0 = System.nanoTime();
 				scorer.run();
