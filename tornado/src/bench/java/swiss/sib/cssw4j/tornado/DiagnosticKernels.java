@@ -39,8 +39,7 @@ public final class DiagnosticKernels {
 			int bestRead = 0;
 			for (int j0 = 0; j0 < qLen; j0 += 4) {
 				// Query letters of the strip. Rows past the end of the query are padding and never reported; they reuse
-				// the last letter so that every load stays inside the array (a conditional load may be compiled into
-				// an unconditional one on the device).
+				// the last letter so that every load stays inside the array.
 				final int last = qStart + qLen - 1;
 				final int q0 = queries[qStart + j0];
 				final int q1 = queries[Math.min(qStart + j0 + 1, last)];

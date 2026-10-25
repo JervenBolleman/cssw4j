@@ -155,9 +155,10 @@ GPU (5 multiprocessors). A larger GPU, 8- or 16-bit packed scores, and splitting
 
 **Measurement notes.** The 8-thread CPU number is not stable on this laptop: under full load the package reaches 85 C
 within about 5 s and the clock is cut to 0.25-1.8 GHz from outside the CPU (its own throttle counter does not change).
-Two TornadoVM 7.3.1 code-generation problems were found and worked around in the strip kernel (see its Javadoc and the
-experiment 5 commit): a conditional load compiled into an unconditional one, and `row + letter` generated with the byte
-type of the letter.
+One TornadoVM 7.3.1 code-generation problem was found and worked around in the strip kernel: a value loaded from a
+`byte[]` is computed and stored with the byte type, so `row + letter` was truncated. `reproducers/` has a minimal
+reproducer and the report for the TornadoVM team. A second problem suspected in the experiment 5 commit (a conditional
+load compiled into an unconditional one) did not reproduce on its own and is not a known bug.
 
 ## Limits
 
