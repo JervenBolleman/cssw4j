@@ -1,8 +1,12 @@
 package swiss.sib.cssw4j.tornado;
 
+import uk.ac.manchester.tornado.api.GridScheduler;
 import uk.ac.manchester.tornado.api.ImmutableTaskGraph;
+import uk.ac.manchester.tornado.api.KernelContext;
 import uk.ac.manchester.tornado.api.TaskGraph;
 import uk.ac.manchester.tornado.api.TornadoExecutionPlan;
+import uk.ac.manchester.tornado.api.WorkerGrid;
+import uk.ac.manchester.tornado.api.WorkerGrid1D;
 import uk.ac.manchester.tornado.api.enums.DataTransferMode;
 
 /**
@@ -15,12 +19,17 @@ public final class TornadoScorer implements AutoCloseable {
 		/** {@link SwKernel#scorePairs}: one row per step, H and E rows in global memory. */
 		ROW,
 		/** {@link SwKernel#scorePairsStrip4}: four rows per pass in registers, a quarter of the memory traffic. */
-		STRIP4;
+		STRIP4,
+		/** {@link SwKernel#scorePairsStrip4Local}: as STRIP4, with the substitution matrix in local memory. */
+		STRIP4_LOCAL;
 
 		public static Variant parse(String name) {
 			return valueOf(name.toUpperCase());
 		}
 	}
+
+	/** Work-group size for {@link Variant#STRIP4_LOCAL}. */
+	static final int LOCAL_SIZE = 64;
 
 	public final int[] scores, refEnds, readEnds;
 	private final TornadoExecutionPlan plan;
@@ -54,12 +63,28 @@ public final class TornadoScorer implements AutoCloseable {
 			int[] queryInts = queries.residuesAsInts();
 			graph.transferToDevice(DataTransferMode.FIRST_EXECUTION, params, matrix.scores(), queryInts,
 					queries.offsets, targets.residues, targets.offsets, h, e);
-			graph.task("score", SwKernel::scorePairsStrip4, params, matrix.scores(), queryInts, queries.offsets,
-					targets.residues, targets.offsets, h, e, scores, refEnds, readEnds);
+			if (variant == Variant.STRIP4) {
+				graph.task("score", SwKernel::scorePairsStrip4, params, matrix.scores(), queryInts, queries.offsets,
+						targets.residues, targets.offsets, h, e, scores, refEnds, readEnds);
+			} else {
+				if (matrix.size() * matrix.size() > SwKernel.MAX_MATRIX_CELLS) {
+					throw new IllegalArgumentException("matrix too large for local memory: " + matrix.size());
+				}
+				graph.task("score", SwKernel::scorePairsStrip4Local, new KernelContext(), params, matrix.scores(),
+						queryInts, queries.offsets, targets.residues, targets.offsets, h, e, scores, refEnds, readEnds);
+			}
 		}
 		graph.transferToHost(DataTransferMode.EVERY_EXECUTION, scores, refEnds, readEnds);
 		ImmutableTaskGraph immutable = graph.snapshot();
-		plan = new TornadoExecutionPlan(immutable).withDevice(device());
+		TornadoExecutionPlan p = new TornadoExecutionPlan(immutable).withDevice(device());
+		if (variant == Variant.STRIP4_LOCAL) {
+			// One work-item per pair, in work-groups of LOCAL_SIZE that share the matrix copy; the global size must be
+			// a multiple of the work-group size, the kernel ignores the extra work-items.
+			WorkerGrid grid = new WorkerGrid1D((pairs + LOCAL_SIZE - 1) / LOCAL_SIZE * LOCAL_SIZE);
+			grid.setLocalWork(LOCAL_SIZE, 1, 1);
+			p = p.withGridScheduler(new GridScheduler("sw.score", grid));
+		}
+		plan = p;
 	}
 
 	/**
