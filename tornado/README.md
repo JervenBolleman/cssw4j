@@ -88,7 +88,7 @@ last toolkit that targets it. Its NVRTC works with the 580 driver, but its `nvcc
     export LD_LIBRARY_PATH=/usr/local/cuda-12.8/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
     TORNADOVM_HOME=$HOME/.sdkman/candidates/tornadovm/7.3.1-jdk22plus-cuda tornado/run-check.sh tornado
 
-## JMH benchmark (CUDA, Quadro M1000M)
+## JMH benchmark (CUDA and OpenCL)
 
 `bench.sh` runs a JMH benchmark (`src/bench`) of the same task graph: transfers, kernel and the copy of the results to
 the host, on the 3,025 protein pairs. JMH runs non-forked, in the launching JVM, because the TornadoVM launcher supplies
@@ -103,13 +103,19 @@ for this comparison.
 
 The throughput is reported in ops/ms, where one invocation counts as 292,393,080 cells. Dividing by 10^6 gives GCUPS.
 
-| `layout` | throughput (ops/ms) | GCUPS |
-|---|---:|---:|
-| INTERLEAVED | 64,095 ± 421 | 0.064 |
-| CONTIGUOUS | 51,560 ± 22 | 0.052 |
+| Backend and device | `layout` | throughput (ops/ms) | GCUPS |
+|---|---|---:|---:|
+| CUDA, Quadro M1000M | INTERLEAVED | 64,095 ± 421 | 0.064 |
+| CUDA, Quadro M1000M | CONTIGUOUS | 51,560 ± 22 | 0.052 |
+| OpenCL, Quadro M1000M | INTERLEAVED | 55,797 ± 298 | 0.056 |
+| OpenCL, Quadro M1000M | CONTIGUOUS | 47,530 ± 418 | 0.048 |
+| OpenCL, pocl CPU | INTERLEAVED | 90,150 ± 2,302 | 0.090 |
+| OpenCL, pocl CPU | CONTIGUOUS | 113,619 ± 1,923 | 0.114 |
 
-Five measurement iterations of 10 s after two warm-up iterations of 5 s each. The results agree with the separate
-`run-check.sh` timings above (4.55 s and 5.58 s per run).
+Five measurement iterations of 10 s after two warm-up iterations of 5 s each. The CUDA rows agree with the separate
+`run-check.sh` timings above (4.55 s and 5.58 s per run); the OpenCL rows agree with those timings too.
+The OpenCL runs use `TORNADOVM_HOME` of the `7.3.1-jdk22plus-opencl` SDK and `DEVICE=0:0` (Quadro) or `DEVICE=0:1`
+(pocl CPU); the CUDA environment variables are not needed for them.
 
 ## Limits
 
