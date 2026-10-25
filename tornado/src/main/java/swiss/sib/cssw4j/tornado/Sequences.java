@@ -26,6 +26,15 @@ public final class Sequences {
 		return ids.size();
 	}
 
+	/** Sequences given in memory, encoded with the matrix's letter table. */
+	public static Sequences of(Matrix matrix, List<String> ids, List<String> sequences) {
+		List<StringBuilder> seqs = new ArrayList<>();
+		for (String s : sequences) {
+			seqs.add(new StringBuilder(s));
+		}
+		return pack(matrix, new ArrayList<>(ids), seqs);
+	}
+
 	/** Reads FASTA files; the id of a sequence is the first word of its header. */
 	public static Sequences read(Matrix matrix, List<Path> files) throws IOException {
 		List<String> ids = new ArrayList<>();
@@ -42,6 +51,10 @@ public final class Sequences {
 				}
 			}
 		}
+		return pack(matrix, ids, seqs);
+	}
+
+	private static Sequences pack(Matrix matrix, List<String> ids, List<StringBuilder> seqs) {
 		int[] offsets = new int[seqs.size() + 1];
 		int total = 0, max = 0;
 		for (int i = 0; i < seqs.size(); i++) {
