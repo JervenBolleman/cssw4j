@@ -51,6 +51,8 @@ Checked on the 55 x 55 protein pairs of the test dataset (BLOSUM62, gap open 11,
 positions are identical to the C library for all 3,025 pairs, as plain Java, through TornadoVM on the Quadro M1000M
 (OpenCL) and on the pocl CPU device, with both layouts.
 
+Also checked through the TornadoVM CUDA backend on the Quadro (CUDA 12.8 libraries, see Build and run), both layouts.
+
 Timings: 3,025 pairs = 292 million DP cells. Development machine: Intel i7-6700HQ, NVIDIA Quadro M1000M (Maxwell,
 2 GB, driver 580.178.04), OpenCL from NVIDIA and pocl. Times are the median of runs 2 to 4 of `Check` (kernel plus
 transfers of the results to the host; the first run also includes compilation and is not counted).
@@ -63,6 +65,8 @@ transfers of the results to the host; the first run also includes compilation an
 | `SwKernel` via TornadoVM OpenCL | pocl, CPU | 3.49 s (interleaved) | 0.084 |
 | `SwKernel` via TornadoVM OpenCL | Quadro M1000M | 5.23 s (interleaved) | 0.056 |
 | `SwKernel` via TornadoVM OpenCL | Quadro M1000M | 6.07 s (contiguous) | 0.048 |
+| `SwKernel` via TornadoVM CUDA | Quadro M1000M | 4.55 s (interleaved) | 0.064 |
+| `SwKernel` via TornadoVM CUDA | Quadro M1000M | 5.58 s (contiguous) | 0.052 |
 
 The striped CPU code is about 40 times faster than the best TornadoVM run, and the Quadro is slower than the pocl CPU
 device for this kernel. The kernel does a scalar recurrence and reads and writes its H and E rows in global memory for
@@ -70,8 +74,19 @@ every cell. Why the Quadro is slower was not profiled; the old Maxwell chip and 
 causes. The interleaved layout, which suits the GPU in principle, is faster on the Quadro and slower on the CPU.
 
 Selecting a device: `tornado --devices` lists `driver:index`. Pass `--jvm=-Dcssw4j.device=0:0` (the Quadro, the default) or
-`--jvm=-Dcssw4j.device=0:1` (the pocl CPU) to `run-check.sh`. The CUDA backend (`7.3.1-jdk22plus-cuda`) does not run on
-this GPU yet: CUDA 13 dropped sm_50, and CUDA 12.8 is needed; that is not set up.
+`--jvm=-Dcssw4j.device=0:1` (the pocl CPU) to `run-check.sh`, with the matching `TORNADOVM_HOME`. The CUDA SDK uses
+device `0:0`. `Check` prints the backend class it actually runs on (`CUDABackendImpl` or `OCLBackendImpl`).
+
+The OpenCL and CUDA rows are the same kernel on the same GPU. The CUDA backend is a little faster than OpenCL on this
+card, but both are slower than the pocl CPU device for this kernel, so the GPU is not the right target for it yet.
+
+CUDA on this Maxwell GPU (sm_50): CUDA 13 dropped sm_50, so CUDA 13.4 NVRTC refuses to compile for it. CUDA 12.8 is the
+last toolkit that targets it. Its NVRTC works with the 580 driver, but its `nvcc` does not accept the host compiler here
+(GCC 16 is newer than CUDA 12.8 supports), so TornadoVM must use the NVRTC path. Set:
+
+    export CUDA_HOME=/usr/local/cuda-12.8
+    export LD_LIBRARY_PATH=/usr/local/cuda-12.8/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
+    TORNADOVM_HOME=$HOME/.sdkman/candidates/tornadovm/7.3.1-jdk22plus-cuda tornado/run-check.sh tornado
 
 ## Limits
 
