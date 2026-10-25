@@ -43,24 +43,35 @@ preview features; the scripts detect this from `$TORNADOVM_HOME/etc/tornado.jdk`
     LAYOUT=contiguous tornado/run-check.sh tornado
 
 `$TORNADOVM_HOME/bin/tornado --devices` lists the devices. A device needs an OpenCL platform; on a machine without a GPU
-driver the `pocl` package provides a CPU device.
+driver the `pocl` package provides a CPU device. Use `--jvm=-Dcssw4j.device=driver:index` to pick one (see Results).
 
 ## Results
 
 Checked on the 55 x 55 protein pairs of the test dataset (BLOSUM62, gap open 11, gap extend 1): score and both end
-positions are identical to the C library for all 3,025 pairs, as plain Java and through TornadoVM, with both layouts.
+positions are identical to the C library for all 3,025 pairs, as plain Java, through TornadoVM on the Quadro M1000M
+(OpenCL) and on the pocl CPU device, with both layouts.
 
-Timings on the development machine (Intel i7-6700HQ, 8 threads). **No GPU was available:** the NVIDIA driver was not
-loaded, so the only OpenCL device was pocl on the CPU. These numbers say nothing about GPU speed.
+Timings: 3,025 pairs = 292 million DP cells. Development machine: Intel i7-6700HQ, NVIDIA Quadro M1000M (Maxwell,
+2 GB, driver 580.178.04), OpenCL from NVIDIA and pocl. Times are the median of runs 2 to 4 of `Check` (kernel plus
+transfers of the results to the host; the first run also includes compilation and is not counted).
 
-| 3,025 pairs, scores and end positions | time |
-|---|---:|
-| cssw4j `Aligner` (striped Vector API, CPU, scores only) | about 0.07 s |
-| `SwKernel` as sequential Java, interleaved / contiguous | about 2.4 s / 1.6 s |
-| `SwKernel` through TornadoVM on pocl, interleaved / contiguous | about 3.3 s / 2.9 s |
+| Implementation | Device | time | GCUPS |
+|---|---|---:|---:|
+| `Aligner`, striped Vector API (scores only, BLOSUM50 10/2) | CPU, 1 thread | about 0.065 s | 4.49 |
+| `SwKernel` as sequential Java (scores and end positions) | CPU, 1 thread | 1.6 s (contiguous) | 0.18 |
+| `SwKernel` via TornadoVM OpenCL | pocl, CPU | 2.76 s (contiguous) | 0.106 |
+| `SwKernel` via TornadoVM OpenCL | pocl, CPU | 3.49 s (interleaved) | 0.084 |
+| `SwKernel` via TornadoVM OpenCL | Quadro M1000M | 5.23 s (interleaved) | 0.056 |
+| `SwKernel` via TornadoVM OpenCL | Quadro M1000M | 6.07 s (contiguous) | 0.048 |
 
-On a CPU device this kernel is about 40 times slower than the striped CPU code, and TornadoVM on pocl is not faster than
-a single Java thread. The kernel is meant for a GPU with many pairs per launch; measure it there before relying on it.
+The striped CPU code is about 40 times faster than the best TornadoVM run, and the Quadro is slower than the pocl CPU
+device for this kernel. The kernel does a scalar recurrence and reads and writes its H and E rows in global memory for
+every cell. Why the Quadro is slower was not profiled; the old Maxwell chip and that memory traffic are the likely
+causes. The interleaved layout, which suits the GPU in principle, is faster on the Quadro and slower on the CPU.
+
+Selecting a device: `tornado --devices` lists `driver:index`. Pass `--jvm=-Dcssw4j.device=0:0` (the Quadro, the default) or
+`--jvm=-Dcssw4j.device=0:1` (the pocl CPU) to `run-check.sh`. The CUDA backend (`7.3.1-jdk22plus-cuda`) does not run on
+this GPU yet: CUDA 13 dropped sm_50, and CUDA 12.8 is needed; that is not set up.
 
 ## Limits
 
