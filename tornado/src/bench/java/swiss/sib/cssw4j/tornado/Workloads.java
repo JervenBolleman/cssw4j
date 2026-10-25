@@ -4,6 +4,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 /** Inputs shared by the TornadoVM benchmarks: BLOSUM62, gap open 11, gap extend 1, and the test dataset. */
 final class Workloads {
@@ -74,6 +75,25 @@ final class Workloads {
 			}
 		}
 		return out;
+	}
+
+	/**
+	 * {@code count} random protein sequences of {@code length} residues over the 20 standard amino acids: a balanced
+	 * workload in which every pair has the same number of cells. The seed makes it reproducible.
+	 */
+	static Sequences random(Matrix matrix, String prefix, int count, int length, long seed) {
+		String letters = "ARNDCQEGHILKMFPSTWYV";
+		Random rnd = new Random(seed);
+		List<String> ids = new ArrayList<>(), seqs = new ArrayList<>();
+		for (int i = 0; i < count; i++) {
+			StringBuilder sb = new StringBuilder(length);
+			for (int k = 0; k < length; k++) {
+				sb.append(letters.charAt(rnd.nextInt(letters.length())));
+			}
+			ids.add(prefix + i);
+			seqs.add(sb.toString());
+		}
+		return Sequences.of(matrix, ids, seqs);
 	}
 
 	/** Dynamic-programming cells of all query-target pairs. */
