@@ -25,6 +25,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <junit.version>5.13.4</junit.version>
     <jmh.version>1.37</jmh.version>
+    <graal.sdk.version>25.0.4</graal.sdk.version>
     <vector.args>--add-modules jdk.incubator.vector</vector.args>
   </properties>
 
@@ -47,7 +48,65 @@
       <version>${jmh.version}</version>
       <scope>test</scope>
     </dependency>
+    <!-- Annotations for the C entry points in swiss.sib.cssw4j.capi; only needed to build the native library. -->
+    <dependency>
+      <groupId>org.graalvm.sdk</groupId>
+      <artifactId>nativeimage</artifactId>
+      <version>${graal.sdk.version}</version>
+      <scope>provided</scope>
+    </dependency>
   </dependencies>
+
+  <profiles>
+    <!-- mvn -Pnative package, with GRAALVM_HOME pointing at a GraalVM JDK (or native-image on PATH): builds libcssw4j.so. -->
+    <profile>
+      <id>native</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <version>3.7.0</version>
+            <executions>
+              <execution>
+                <id>native-classpath</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>build-classpath</goal>
+                </goals>
+                <configuration>
+                  <includeScope>provided</includeScope>
+                  <outputFile>${project.build.directory}/native/classpath.txt</outputFile>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.5.0</version>
+            <executions>
+              <execution>
+                <id>native-image</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>bash</executable>
+                  <arguments>
+                    <argument>${project.basedir}/src/native/build-native.sh</argument>
+                    <argument>${project.build.outputDirectory}</argument>
+                    <argument>${project.build.directory}/native</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 
   <build>
     <plugins>
