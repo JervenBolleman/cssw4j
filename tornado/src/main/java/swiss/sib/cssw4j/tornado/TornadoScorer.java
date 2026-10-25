@@ -6,31 +6,58 @@ import uk.ac.manchester.tornado.api.TornadoExecutionPlan;
 import uk.ac.manchester.tornado.api.enums.DataTransferMode;
 
 /**
- * Runs {@link SwKernel#scorePairs} on a TornadoVM device for every pair of a batch of queries and a batch of targets.
- * The task graph is built once; {@link #run()} can be called repeatedly (the first call compiles the kernel).
+ * Runs the scoring kernel on a TornadoVM device for every pair of a batch of queries and a batch of targets. The task
+ * graph is built once; {@link #run()} can be called repeatedly (the first call compiles the kernel).
  */
 public final class TornadoScorer implements AutoCloseable {
+	/** Which kernel to run; all compute the same scores and end positions. */
+	public enum Variant {
+		/** {@link SwKernel#scorePairs}: one row per step, H and E rows in global memory. */
+		ROW,
+		/** {@link SwKernel#scorePairsStrip4}: four rows per pass in registers, a quarter of the memory traffic. */
+		STRIP4;
+
+		public static Variant parse(String name) {
+			return valueOf(name.toUpperCase());
+		}
+	}
+
 	public final int[] scores, refEnds, readEnds;
 	private final TornadoExecutionPlan plan;
 
 	public TornadoScorer(Matrix matrix, Sequences queries, Sequences targets, int gapOpen, int gapExtend,
 			Layout layout) {
+		this(matrix, queries, targets, gapOpen, gapExtend, layout, Variant.ROW);
+	}
+
+	public TornadoScorer(Matrix matrix, Sequences queries, Sequences targets, int gapOpen, int gapExtend,
+			Layout layout, Variant variant) {
 		int pairs = queries.count() * targets.count();
-		int[] steps = layout.steps(pairs, queries.maxLength);
+		// Scratch: ROW keeps one H and one E value per query position and pair, STRIP4 one H and one F value per
+		// target position and pair.
+		int length = variant == Variant.ROW ? queries.maxLength : targets.maxLength;
+		int[] steps = layout.steps(pairs, length);
 		int[] params = { gapOpen, gapExtend, matrix.size(), steps[0], steps[1] };
-		// Scratch for the recurrence: one H and one E value per query position and pair, interleaved by pair.
-		int[] h = new int[(queries.maxLength + 1) * pairs];
-		int[] e = new int[(queries.maxLength + 1) * pairs];
+		int[] h = new int[(length + 1) * pairs];
+		int[] e = new int[(length + 1) * pairs];
 		scores = new int[pairs];
 		refEnds = new int[pairs];
 		readEnds = new int[pairs];
 
-		TaskGraph graph = new TaskGraph("sw") //
-				.transferToDevice(DataTransferMode.FIRST_EXECUTION, params, matrix.scores(), queries.residues,
-						queries.offsets, targets.residues, targets.offsets, h, e) //
-				.task("score", SwKernel::scorePairs, params, matrix.scores(), queries.residues, queries.offsets,
-						targets.residues, targets.offsets, h, e, scores, refEnds, readEnds) //
-				.transferToHost(DataTransferMode.EVERY_EXECUTION, scores, refEnds, readEnds);
+		TaskGraph graph = new TaskGraph("sw");
+		if (variant == Variant.ROW) {
+			graph.transferToDevice(DataTransferMode.FIRST_EXECUTION, params, matrix.scores(), queries.residues,
+					queries.offsets, targets.residues, targets.offsets, h, e);
+			graph.task("score", SwKernel::scorePairs, params, matrix.scores(), queries.residues, queries.offsets,
+					targets.residues, targets.offsets, h, e, scores, refEnds, readEnds);
+		} else {
+			int[] queryInts = queries.residuesAsInts();
+			graph.transferToDevice(DataTransferMode.FIRST_EXECUTION, params, matrix.scores(), queryInts,
+					queries.offsets, targets.residues, targets.offsets, h, e);
+			graph.task("score", SwKernel::scorePairsStrip4, params, matrix.scores(), queryInts, queries.offsets,
+					targets.residues, targets.offsets, h, e, scores, refEnds, readEnds);
+		}
+		graph.transferToHost(DataTransferMode.EVERY_EXECUTION, scores, refEnds, readEnds);
 		ImmutableTaskGraph immutable = graph.snapshot();
 		plan = new TornadoExecutionPlan(immutable).withDevice(device());
 	}

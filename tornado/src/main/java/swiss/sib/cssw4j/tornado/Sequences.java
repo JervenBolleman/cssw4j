@@ -26,6 +26,15 @@ public final class Sequences {
 		return ids.size();
 	}
 
+	/** The residues widened to ints, for kernels that must not do arithmetic on byte values (see SwKernel). */
+	public int[] residuesAsInts() {
+		int[] out = new int[residues.length];
+		for (int i = 0; i < out.length; i++) {
+			out[i] = residues[i];
+		}
+		return out;
+	}
+
 	/** Sequences given in memory, encoded with the matrix's letter table. */
 	public static Sequences of(Matrix matrix, List<String> ids, List<String> sequences) {
 		List<StringBuilder> seqs = new ArrayList<>();
