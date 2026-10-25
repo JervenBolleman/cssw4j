@@ -2,3 +2,4 @@ target/
 hs_err_pid*.log
 replay_pid*.log
 JDK_BUG_REPORTS.md
+install-nvidia-580xx.sh
