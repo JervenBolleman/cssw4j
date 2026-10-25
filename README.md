@@ -94,6 +94,35 @@ java --add-modules jdk.incubator.vector -cp target/classes:target/test-classes s
   protein pairs in the dataset; the port fails on exactly the same pairs.
 * Scores above 32,767 saturate in the 16 bit kernel.
 
+## Native library (GraalVM Native Image)
+
+cssw4j can also be built as a C shared library, `libcssw4j.so`, with GraalVM Native Image. The C API
+(`swiss.sib.cssw4j.capi.CApi`) mirrors the SSW functions: `cssw4j_profile_new`, `cssw4j_aligner_new`, `cssw4j_align`,
+and the matching `*_free` functions. Native Image writes the header `libcssw4j.h` next to the library.
+
+Build (needs a GraalVM JDK; the Java JDK 25 build of the library is unchanged):
+
+    GRAALVM_HOME=/path/to/graalvm mvn -Pnative package     # writes target/native/libcssw4j.so and libcssw4j.h
+    # or, without Maven: src/native/build-native.sh target/classes target/native
+
+Extra Native Image options can be given in `NATIVE_IMAGE_ARGS`, e.g. `NATIVE_IMAGE_ARGS=-O3`.
+
+Check against the C reference results (the same data as the JVM tests):
+
+    src/test/scripts/test_native.sh
+
+Status, measured on the same machine as the Performance section (Oracle GraalVM 25.4.4, Native Image default `-O2`):
+
+* **Correct:** every alignment of the protein and DNA reference sets matches the C library in score, positions, flag
+  and CIGAR (3,025 + 100 pairs).
+* **Slow:** the native kernel runs at about 0.02 GCUPS, against about 10 GCUPS for the same code on the JVM (long
+  1,000 × 5,000 pair, scores only). `-O3` doubles the native speed (0.03 GCUPS); GraalVM CE gives the same result as
+  Oracle GraalVM. Simple vector loops are fast natively (about 1.3 ns per vector operation, about the same as the JIT),
+  so the loss is specific to the large alignment kernel, which Native Image does not compile to SIMD code.
+  The cause has not been pinned down further.
+* So for now use the library through the JVM when speed matters. The native build is useful for C/C++ callers that
+  need correct results and can accept the speed.
+
 ## JDK notes
 
 * `ByteVector.reduceLanes(UMAX)` is wrong on JDK 25 (it returns 128 for vectors whose lanes are all below 128), and on
