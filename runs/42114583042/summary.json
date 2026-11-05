@@ -1,0 +1,99 @@
+{
+ "run_id": "42114583042",
+ "run_url": "https://github.com/JervenBolleman/cssw4j/actions/runs/42114583042",
+ "date": "2026-11-05 22:25 UTC",
+ "event": "push",
+ "code": [
+  "`1ee597e` (Architecture comparison: five scheduled runs on Saturdays and Sundays)"
+ ],
+ "reference": [
+  "`c05f1b2` (Add an architecture comparison workflow for the benchmarks)"
+ ],
+ "rows": [
+  {
+   "architecture": "aarch64",
+   "cpu": "Neoverse-N2",
+   "cpus": "4",
+   "vectors": "MaxVectorSize=16 UseSVE=2",
+   "variant": "default",
+   "lanes": "16",
+   "gcups": 3.99,
+   "gcups_cigar": 2.02,
+   "ref_gcups": 4.06,
+   "ref_gcups_cigar": 2.02,
+   "vs_ref": 0.9827586206896554,
+   "vs_ref_cigar": 1.0,
+   "jmh_vs_ref": 1.0040876518959987,
+   "jmh_benchmarks": 24,
+   "identical": true
+  },
+  {
+   "architecture": "aarch64",
+   "cpu": "Neoverse-N2",
+   "cpus": "4",
+   "vectors": "MaxVectorSize=16 UseSVE=2",
+   "variant": "128bit",
+   "lanes": "16",
+   "gcups": 4.06,
+   "gcups_cigar": 2.03,
+   "ref_gcups": 4.07,
+   "ref_gcups_cigar": 2.04,
+   "vs_ref": 0.9975429975429974,
+   "vs_ref_cigar": 0.9950980392156862,
+   "jmh_vs_ref": 0.9998938627052808,
+   "jmh_benchmarks": 24,
+   "identical": true
+  },
+  {
+   "architecture": "x86_64",
+   "cpu": "AMD EPYC 9V45 96-Core Processor",
+   "cpus": "4",
+   "vectors": "MaxVectorSize=64 UseAVX=3",
+   "variant": "default",
+   "lanes": "64",
+   "gcups": 6.34,
+   "gcups_cigar": 2.83,
+   "ref_gcups": 5.71,
+   "ref_gcups_cigar": 2.61,
+   "vs_ref": 1.1103327495621715,
+   "vs_ref_cigar": 1.0842911877394636,
+   "jmh_vs_ref": 1.0331911451394524,
+   "jmh_benchmarks": 24,
+   "identical": true
+  },
+  {
+   "architecture": "x86_64",
+   "cpu": "AMD EPYC 9V45 96-Core Processor",
+   "cpus": "4",
+   "vectors": "MaxVectorSize=64 UseAVX=3",
+   "variant": "avx2",
+   "lanes": "32",
+   "gcups": 5.74,
+   "gcups_cigar": 2.62,
+   "ref_gcups": 5.86,
+   "ref_gcups_cigar": 2.59,
+   "vs_ref": 0.9795221843003413,
+   "vs_ref_cigar": 1.0115830115830118,
+   "jmh_vs_ref": 0.9703894152959301,
+   "jmh_benchmarks": 24,
+   "identical": true
+  },
+  {
+   "architecture": "x86_64",
+   "cpu": "AMD EPYC 9V45 96-Core Processor",
+   "cpus": "4",
+   "vectors": "MaxVectorSize=64 UseAVX=3",
+   "variant": "128bit",
+   "lanes": "16",
+   "gcups": 5.14,
+   "gcups_cigar": 2.44,
+   "ref_gcups": 4.94,
+   "ref_gcups_cigar": 2.42,
+   "vs_ref": 1.040485829959514,
+   "vs_ref_cigar": 1.0082644628099173,
+   "jmh_vs_ref": 0.9934300551083206,
+   "jmh_benchmarks": 24,
+   "identical": true
+  }
+ ]
+}
