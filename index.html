@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cssw4j benchmarks</title>
+<style>
+:root { --bg: #fdfdfc; --fg: #1d1d1b; --muted: #66645e; --line: #dddad3; --head: #f1efe9; --accent: #2f5d8a; --bad: #b3261e; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #17181a; --fg: #e6e4df; --muted: #a09d96; --line: #34363a; --head: #222428; --accent: #8db7e0; --bad: #f2867d; }
+}
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; margin: 0 auto; max-width: 1100px; padding: 24px 16px 64px; }
+h1 { font-size: 1.6rem; margin: 0 0 4px; }
+h2 { font-size: 1.3rem; margin-top: 2.5rem; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+h3, h4 { font-size: 1.05rem; margin-top: 1.6rem; }
+a { color: var(--accent); }
+.muted { color: var(--muted); }
+.bad { color: var(--bad); }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+th, td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
+th { background: var(--head); }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+pre { background: var(--head); border: 1px solid var(--line); padding: 8px 10px; overflow-x: auto; font-size: 12px; }
+code { font-size: 0.9em; }
+dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 2px 16px; font-size: 13px; }
+dl.facts dt { color: var(--muted); }
+dl.facts dd { margin: 0; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<h1>cssw4j benchmarks</h1>
+<p class="muted">Every run of the architecture comparison workflow, newest first. GCUPS is the protein test set all
+against all on one thread; vs ref is the code over the reference measured in the same job. Hosted runners are virtual
+machines on varying CPUs, so compare GCUPS only between runs on the same CPU model.</p>
+<div class="scroll"><table>
+<thead><tr><th>run</th><th>trigger</th><th>code</th><th>reference</th><th>architecture</th><th>CPU model</th>
+<th>variant</th><th class=num>lanes</th><th class=num>GCUPS scores</th><th class=num>GCUPS CIGAR</th><th class=num>vs ref, scores</th><th class=num>vs ref, CIGAR</th><th class=num>JMH vs ref</th><th>scores</th></tr></thead>
+<tbody><tr><td rowspan=5><a href="runs/41996578718/">2026-11-05 09:30 UTC</a></td><td rowspan=5>push</td><td rowspan=5><a href="https://github.com/JervenBolleman/cssw4j/commit/c05f1b2"><code>c05f1b2</code></a> (Add an architecture comparison workflow for the benchmarks)</td><td rowspan=5><a href="https://github.com/JervenBolleman/cssw4j/commit/84ac76d"><code>84ac76d</code></a> (Add a GraalVM reproducer: Vector API falls back to Java when a vector helper is not inlined)</td><td>aarch64</td><td>Neoverse-N2</td><td>default</td><td class=num>16</td><td class=num>4.08</td><td class=num>2.04</td><td class=num><b>1.000×</b></td><td class=num><b>1.010×</b></td><td class=num>1.000×</td><td>identical</td></tr><tr><td>aarch64</td><td>Neoverse-N2</td><td>128bit</td><td class=num>16</td><td class=num>4.07</td><td class=num>2.03</td><td class=num><b>1.012×</b></td><td class=num><b>0.995×</b></td><td class=num>1.001×</td><td>identical</td></tr><tr><td>x86_64</td><td>AMD EPYC 9V74 80-Core Processor</td><td>default</td><td class=num>64</td><td class=num>3.81</td><td class=num>1.90</td><td class=num><b>1.050×</b></td><td class=num><b>0.990×</b></td><td class=num>0.986×</td><td>identical</td></tr><tr><td>x86_64</td><td>AMD EPYC 9V74 80-Core Processor</td><td>avx2</td><td class=num>32</td><td class=num>5.40</td><td class=num>2.39</td><td class=num><b>1.013×</b></td><td class=num><b>0.992×</b></td><td class=num>1.008×</td><td>identical</td></tr><tr><td>x86_64</td><td>AMD EPYC 9V74 80-Core Processor</td><td>128bit</td><td class=num>16</td><td class=num>4.73</td><td class=num>2.20</td><td class=num><b>1.004×</b></td><td class=num><b>1.009×</b></td><td class=num>0.989×</td><td>identical</td></tr></tbody>
+</table></div>
+</body>
+</html>
